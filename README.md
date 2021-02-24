@@ -30,6 +30,9 @@ Else a README.md should be supplied.
       From a selection of Nodes of same type, expose all of their attribute under the parent GroupNode and link them.
 
     - `mari_paint_replace.py` : 
-     
-     Create new paint node that is an exact copy of the current one, except it's blank, and delete the original one.
+    
+        Create new paint node that is an exact copy of the current one, except it's blank, and delete the original one.
 
+
+
+Contact: monsieurlixm@gmail.com
