@@ -7,30 +7,51 @@ Last Modified: 24/02/2021
     Python 2.7+
     Mari SCRIPT
     Tested on Mari 4.7.v1.
-    Require the ExtensionPack
+    !! Require the ExtensionPack !!
 
 [What]
     From a selection of same node type expose all of their attribute under
     the parent GroupNode and linked them.
 
-[License]
-    Shared under `Creative Commons Attribution-NonCommercial-ShareAlike 4.0
-    International` License.
+[How]
+    - Select a bunch of node of the same type inside a Group Node
+    - Execute this script
+    - (optionnal) Add attributes names that you would like to not expose in
+        <attr_ignore_list> list in the main() function.
 
-    To view a copy of this license,
-    visit http://creativecommons.org/licenses/by-nc-sa/4.0/.
+[License]
+    This work is licensed under PYCO EULA Freelance License Model.
+
+    !! By using this script  you automatically accept and agree to be
+    bound by the all the terms described in the EULA. !!
+
+    To view a copy of this license, visit
+    https://mrlixm.github.io/PYCO/licenses/eula/
+
+    This license grants the utilisation of the product on personal machines
+    (1.c.) used by a single user for Commercial purposes.
+
+    The user may not (a) share (b) distribute any of the content of the
+    product, whether it has been modified or not, without an explicit
+    agreement from Pyco.
+
+    The user may modify and adapt the content of the product for himself as
+    long as the above rules are respected.
 
 [Notes]
     Benchmark:
-    v01:
-        - 5nodes - ~50 attr: 342s
+    v0.0.1:
+        - 5nodes (heavy) - ~60 attr: 342s (time_sleep=True)
+    v0.0.2:
+        - 6nodes - 3attr: 0.0534s (time_sleep=False)
+
 """
 import time
 from collections import OrderedDict
 
 import mari
 
-VERSION = "0.0.1"
+VERSION = "1.0.0"
 
 print("-"*40)
 
@@ -59,10 +80,10 @@ class UserSelAction(CurrentNodegraphAction):
         """
         for node in self.selections:
             if not node.typeID() == node_type:
-                raise ValueError("[{}][check_type]"
-                                 "The given node {} is not a {}"
+                raise ValueError("[{}][check_type] "
+                                 "The given node <{}> is not a {}"
                                  "".format(self.__class__.__name__,
-                                           node.name,
+                                           node.name(),
                                            node_type))
         return
 
@@ -77,18 +98,22 @@ class UserSelAction(CurrentNodegraphAction):
         print("[check_same_type] Base type: {}".format(base_type))
         for user_node in self.selections:
             if user_node.typeID() != base_type:
-                raise TypeError("[{}][check_same_type]"
-                                "The node {} (and maybe other) is not of "
+                raise TypeError("[{}][check_same_type] "
+                                "The node <{}> (and maybe other) is not of "
                                 "the same type as other node in selection."
                                 "".format(self.__class__.__name__,
-                                          user_node.name))
+                                          user_node.name()))
         return
 
-    def expose_attr_to_parent_group(self, time_pause=True):
+    def expose_attr_to_parent_group(self, time_pause=False,
+                                    attr_ignore_list=None):
         """ Expose all the attributes of the nodes in the selection to the
         parent GroupNode, and link the attribute of each node.
 
         Args:
+            attr_ignore_list(list of str or tuple of str):
+                List of attributes name that need to be ignored/skipped.
+
             time_pause(bool): If True the script will paude for few second
                 between each operation.
                 It was noticed that this might help Mari on processing a lot
@@ -106,8 +131,11 @@ class UserSelAction(CurrentNodegraphAction):
 
         first_node = self.selections[0]
 
+        # create a dictionnary with all the attributes that need to be exposed
         knob_dict = OrderedDict()
         for attr_name in first_node.metadataNames():
+            if attr_ignore_list and attr_name in attr_ignore_list:
+                continue  # skip this attribute
             knob_dict[attr_name] = []  # init with an empty object
 
         # Create the knobs on the group node for each node in the selection
@@ -153,6 +181,26 @@ class UserSelAction(CurrentNodegraphAction):
                       " linkKnobs error: {}".format(excp))
             continue
 
+    def get_infos(self, first_item_only=False):
+        """
+
+        Args:
+            first_item_only(bool):
+                return only the node information for the
+                first item in the selection.
+
+        Returns:
+            str: node information
+        """
+        if first_item_only:
+            return self.selections[0].nodeInformation()
+
+        display_str = ""
+        for node in self.selections:
+            display_str += node.nodeInformation()
+
+        return display_str
+
 
 # -----------------------------------------------------------------------------
 
@@ -160,7 +208,10 @@ def main():
     start_time = time.clock()
 
     user_sel = UserSelAction()
-    user_sel.expose_attr_to_parent_group()
+    # print(user_sel.get_infos())
+    attr_ignore_list = [""]
+    user_sel.expose_attr_to_parent_group(time_pause=False,
+                                         attr_ignore_list=attr_ignore_list)
 
     print("\n Script finished in {}s ".format(time.clock() - start_time))
 

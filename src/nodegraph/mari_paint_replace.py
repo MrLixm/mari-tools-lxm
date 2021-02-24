@@ -6,17 +6,38 @@ Last Modified: 24/02/2021
     Python 2.7+
     Mari SCRIPT
     Tested on Mari 4.7.v1.
-    Require the ExtensionPack
+    !! Require the ExtensionPack !!
 
 [What]
-    Utility to interact with Nodegrpah Paint Node.
+    Utility to interact with Nodegraph Paint Node.
+    Function:
+        - reset:
+             Create new paint node that is an exact copy of the current one
+             , except it's blank; and delete the original one.
+
+[How]
+    - Select an arbitrary number of paintNodes
+    - Execute the script
 
 [License]
-    Shared under `Creative Commons Attribution-NonCommercial-ShareAlike 4.0
-    International` License.
+    This work is licensed under PYCO EULA Freelance License Model.
 
-    To view a copy of this license,
-    visit http://creativecommons.org/licenses/by-nc-sa/4.0/.
+    !! By using this script  you automatically accept and agree to be
+    bound by the all the terms described in the EULA. !!
+
+    To view a copy of this license, visit
+    https://mrlixm.github.io/PYCO/licenses/eula/
+
+    This license grants the utilisation of the product on personal machines
+    (1.c.) used by a single user for Commercial purposes.
+
+    The user may not (a) share (b) distribute any of the content of the
+    product, whether it has been modified or not, without an explicit
+    agreement from Pyco.
+
+    The user may modify and adapt the content of the product for himself as
+    long as the above rules are respected.
+
 """
 
 import time
@@ -159,8 +180,8 @@ class PaintAction(NodeAction):
         return display_str
 
     def reset(self):
-        """ Create new paint node that it's an exact copy of the current one
-        (self), except it blank, and delete the original one.
+        """ Create new paint node that is an exact copy of the current one
+        (self), except it's blank, and delete the original one.
         """
         original_name = self.paint_node.name()
         size = int(self.paint_node.size())
@@ -204,8 +225,8 @@ def main():
 
     for node in user_sel.selections:
         pa = PaintAction(paint_node=node)
-        print(pa.get_node_info())
-        # pa.reset()
+        # print(pa.get_node_info())
+        pa.reset()
 
     print("\n Script finished in {}s ".format(time.clock() - start_time))
 
