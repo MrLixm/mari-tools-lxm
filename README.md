@@ -21,9 +21,15 @@ Else a README.md should be supplied.
 ## What's Inside
 
 - Nodegraph
-    - `mari_create_new_channels.py` : Quickly create multiple channels.
-    - `mari_group_expose.py`: From a selection of same node type expose all of their attribute under
-    the parent GroupNode and linked them.
-    - `mari_paint_replace.py` : Create new paint node that is an exact
-     copy of the current one, except it's blank, and delete the original one.
+    - `mari_create_new_channels.py` : 
+
+       Quickly create multiple channels nodes.
+
+    - `mari_group_expose.py`: 
+
+      From a selection of Nodes of same type, expose all of their attribute under the parent GroupNode and link them.
+
+    - `mari_paint_replace.py` : 
+     
+     Create new paint node that is an exact copy of the current one, except it's blank, and delete the original one.
 
