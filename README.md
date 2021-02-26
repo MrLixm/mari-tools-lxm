@@ -31,7 +31,11 @@ Else a README.md should be supplied.
 
     - `mari_paint_replace.py` : 
     
-        Create new paint node that is an exact copy of the current one, except it's blank, and delete the original one.
+        Create new Paint Node that is an exact copy of the current one, except it's blank, and delete the original one.
+        
+        This also work with Channel Nodes.
+        
+        Also has a method do return a formatted string with Node informations.
 
 
 
