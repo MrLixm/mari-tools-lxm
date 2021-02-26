@@ -1,6 +1,6 @@
 """
 Author: Liam Collod
-Last Modified: 24/02/2021
+Last Modified: 26/02/2021
 
 [Support]
     Python 2.7+
@@ -9,14 +9,16 @@ Last Modified: 24/02/2021
     !! Require the ExtensionPack !!
 
 [What]
-    Utility to interact with Nodegraph Paint Node.
+    Utility to interact with Nodegraph Paint Node and Channel Node.
     Function:
         - reset:
-             Create new paint node that is an exact copy of the current one
+             Create a new node that is an exact copy of the current one
              , except it's blank; and delete the original one.
+        - get_<node>_info:
+            Return a formatted string with info about the Node.
 
 [How]
-    - Select an arbitrary number of paintNodes
+    - Select an arbitrary number of paintNodes and/or channelNodes
     - Execute the script
 
 [License]
@@ -41,12 +43,18 @@ Last Modified: 24/02/2021
 """
 
 import time
+import logging
 
 import mari
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
-print("-"*40)
+logging.basicConfig(level=logging.DEBUG,
+                    format='- %(asctime)s [%(levelname)s] %(message)s',
+                    datefmt='%H:%M:%S')
+logger = logging
+
+logger.info("-- Starting script \n")
 
 
 def format_colorspace_config(cs_config, indent):
@@ -80,16 +88,39 @@ class UserSelAction(CurrentNodegraphAction):
 
         Args:
             node_type(str): typeID of the node that must be checked
-
+        Raises:
+            ValueError: if node type is not the one specified
         """
         for node in self.selections:
             if not node.typeID() == node_type:
-                raise ValueError("[{}][check_type]"
-                                 "The given node {} is not a {}"
+                raise ValueError("[{}][check_type] "
+                                 "The given node <{}> is not a {}"
                                  "".format(self.__class__.__name__,
-                                           node.name,
+                                           node.name(),
                                            node_type))
         return
+
+    def check_same_type(self):
+        """
+        Raises:
+            TypeError:
+                If all the node in the selection are not of the same
+                type.
+        """
+        base_type = self.selections[0].typeID()
+        logger.info("[check_same_type] Base type: {}".format(base_type))
+        for user_node in self.selections:
+            if user_node.typeID() != base_type:
+                raise TypeError("[{}][check_same_type] "
+                                "The node <{}> (and maybe other) is not of "
+                                "the same type as other node in selection."
+                                "".format(self.__class__.__name__,
+                                          user_node.name()))
+        return
+
+    def get_type_ifsame(self):
+        self.check_same_type()
+        return self.selections[0].typeID()
 
 
 class NodeAction(object):
@@ -203,6 +234,7 @@ class PaintAction(NodeAction):
         new_paint.setNodeGraphPosition(original_position)
         # delete the original node from the nodegraph
         self.ng.deleteNode(self.paint_node)
+        self.paint_node = new_paint
         # connect the new node
         for target_node, target_port_name in list_connection:
             try:
@@ -215,20 +247,145 @@ class PaintAction(NodeAction):
                                              target_node.name,
                                              target_port_name,
                                              excp))
+        logger.info("[{}][reset] "
+                    "Node <{}> reset"
+                    "".format(self.__class__.__name__,
+                              original_name))
+        return
+
+
+class ChannelAction(NodeAction):
+    """
+    Perform actions on a given paint node.
+    """
+
+    instance_index = 0
+
+    def __init__(self, channel_node):
+        super(ChannelAction, self).__init__(channel_node)
+        self.channel_node = self.node
+        self.channel = self.channel_node.channel()
+        self.instance_index += 1
+
+    @property
+    def channel_node(self):
+        return self._channel_node
+
+    @channel_node.setter
+    def channel_node(self, node):
+        if not node.typeID() == "MRI__System_Shader_Input":
+            raise TypeError("[{}][channel_node.setter]"
+                            "The given node {} is not a channel node"
+                            "".format(self.__class__.__name__,
+                                      node.name()))
+        self._channel_node = node
+        self.channnel = node.channel()
+        return
+
+    def get_channel_info(self, indent=4):
+        """
+
+        Args:
+            indent(int):
+
+        Returns:
+            (str): Formatted string with node info.
+        """
+
+        display_str = "> ChannelNode {}: {}\n".format(self.instance_index,
+                                                    self.channel.name())
+        display_str += "{} Size: {}x{}\n".format(
+            ' '*indent,
+            self.channel.width(),
+            self.channel.height())
+        display_str += "{} Color: {}\n".format(
+            ' ' * indent,
+            self.channel.fillColor().rgba())
+        display_str += "{} Bitdepth: {}\n".format(
+            ' ' * indent,
+            self.channel.depth())
+        display_str += "{} Colorspace config: {}\n".format(
+            ' ' * indent,
+            format_colorspace_config(self.channel_node.colorspaceConfig(),
+                                     indent * 2))
+
+        return display_str
+
+    def reset(self):
+        """ Create new channel node that is an exact copy of the current one
+        (self), except it's blank, and delete the original one.
+        """
+        original_name = self.channel_node.name()
+        width, height = self.channel.width(), self.channel.height()
+        depth = int(self.channel.depth())
+        cs_config = self.channel.colorspaceConfig()  # mari.ColorspaceConfig
+        scs_config = self.channel.scalarColorspaceConfig()
+        locked = self.channel.isLocked()
+        original_position = self.channel_node.nodeGraphPosition()
+        list_out_connection = self.channel_node.outputNodes("Output")
+        input_node, outport_input_node = mari.ExtensionPack.node.inputNode(
+            self.channel_node,
+            "Input")
+
+        filespace = mari.Image.FileSpace.FILESPACE_NORMAL
+        new_channel = self.ng.createChannelNode(width,
+                                                height,
+                                                depth,
+                                                filespace,
+                                                cs_config,)
+
+        new_channel.channel().setLocked(locked)
+        new_channel.channel().setScalarColorspaceConfig(scs_config)
+        new_channel.setName(original_name)
+        new_channel.setNodeGraphPosition(original_position)
+        # delete the original node from the nodegraph
+        self.ng.deleteNode(self.channel_node)
+        self.channel_node = new_channel
+        # connect the new node
+        # # connect output
+        for target_node, target_port_name in list_out_connection:
+            try:
+                target_node.setInputNode(target_port_name, new_channel, "Output")
+            except RuntimeError as excp:
+                raise RuntimeError("[{}][reset]"
+                                   "Can't connect node {} to {} {} port: {}"
+                                   "".format(self.__class__.__name__,
+                                             original_name,
+                                             target_node.name,
+                                             target_port_name,
+                                             excp))
+        # connect input
+        new_channel.setInputNode("Input", input_node, outport_input_node)
+        logger.info("[{}][reset] "
+                    "Node <{}> reset"
+                    "".format(self.__class__.__name__,
+                              original_name))
+        return
 
 
 def main():
     start_time = time.clock()
 
     user_sel = UserSelAction()
-    user_sel.check_type("MRI_Misc_Channel_Input")
-
     for node in user_sel.selections:
-        pa = PaintAction(paint_node=node)
-        # print(pa.get_node_info())
-        pa.reset()
 
-    print("\n Script finished in {}s ".format(time.clock() - start_time))
+        if node.typeID() == "MRI__System_Shader_Input":
+            cha = ChannelAction(channel_node=node)
+            cha.reset()
+
+        elif node.typeID() == "MRI_Misc_Channel_Input":
+            pa = PaintAction(paint_node=node)
+            # print(pa.get_node_info())
+            pa.reset()
+
+        else:
+            raise TypeError("[main] "
+                            "The given node {} is not a channel, neither a "
+                            "paint node (not supported.)"
+                            "".format(node.name()))
+
+    logger.info("\n Script finished in {}s ".format(
+        round(time.clock() - start_time, 3)))
 
 
 main()
